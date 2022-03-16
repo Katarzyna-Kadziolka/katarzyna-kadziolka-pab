@@ -49,7 +49,14 @@ app.put('/note/:id', function (req: Request, res: Response) {
 })
 
 app.delete('/note/:id', function (req: Request, res: Response){
-    
+    const note = notes.find(a => a.id === req.body.id)
+    if(note === undefined) {
+        res.status(400).send('Note does not exist')
+    }
+    else {
+        notes.splice(req.body.id, 1)
+        res.status(204).send(note)
+    }
 })
 
 app.listen(3000)
