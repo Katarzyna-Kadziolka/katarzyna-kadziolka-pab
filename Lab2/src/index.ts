@@ -1,7 +1,10 @@
 import express from 'express'
 import {Request, Response} from 'express'
+import  Note  from '../Note'
 
 const app = express()
+
+const notes: Note[] = []
 
 app.use(express.json())
 
