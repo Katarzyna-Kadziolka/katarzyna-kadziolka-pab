@@ -11,7 +11,8 @@ const tags: Tag[] = []
 app.use(express.json())
 
 app.get('/note/:id', function (req: Request, res: Response) {
-  const note = notes.find(a => a.id === req.body.id)
+  const note = notes.find(a => a.id === +req.params.id)
+  console.log(req)
   if(note === undefined) {
     res.status(404).send('Note does not exist')
   } else {
@@ -51,7 +52,7 @@ app.put('/note/:id', function (req: Request, res: Response) {
 })
 
 app.delete('/note/:id', function (req: Request, res: Response){
-    const note = notes.find(a => a.id === req.body.id)
+    const note = notes.find(a => a.id === +req.params.id)
     if(note === undefined) {
         res.status(400).send('Note does not exist')
     }
@@ -79,7 +80,7 @@ app.get('/tags', function (req: Request, res: Response){
 })
 
 app.get('/tag/:id', function (req: Request, res: Response) {
-  const tag = tags.find(a => a.id === req.body.id)
+  const tag = tags.find(a => a.id === +req.params.id)
   if(tag === undefined) {
     res.status(404).send('Tag does not exist')
   } else {
@@ -119,7 +120,7 @@ app.put('/tag/:id', function (req: Request, res: Response) {
 })
 
 app.delete('/tag/:id', function (req: Request, res: Response){
-  const tag = tags.find(a => a.id === req.body.id)
+  const tag = tags.find(a => a.id === +req.params.id)
   if(tag === undefined) {
       res.status(400).send('Tag does not exist')
   }
