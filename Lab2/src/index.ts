@@ -27,15 +27,18 @@ app.post('/note', function (req: Request, res: Response) {
   } else if(note.content === undefined) {
       res.status(400).send('Note content is undefined')
   } else {
-      note.tags.forEach(tag => {
-        if(!tags.find(a => a.name === tag.name)) {
-          const newTag: Tag = {
-            id: Date.now(),
-            name: tag.name
+      console.log(note)
+      if(note.tags !== undefined){
+        note.tags.forEach(tag => {
+          if(!tags.find(a => a.name === tag.name)) {
+            const newTag: Tag = {
+              id: Date.now(),
+              name: tag.name
+            }
+            tags.push(newTag)
           }
-          tags.push(newTag)
-        }
-      });
+        });
+      }
       note.id = Date.now()
       notes.push(note)
       res.status(201).send(note)
