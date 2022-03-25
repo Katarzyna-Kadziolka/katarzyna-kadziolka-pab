@@ -1,6 +1,6 @@
 import express from 'express'
 import {Request, Response} from 'express'
-import  Note  from '../Note'
+import  Note  from '../Models/Note'
 
 const app = express()
 
@@ -57,6 +57,14 @@ app.delete('/note/:id', function (req: Request, res: Response){
         notes.splice(req.body.id, 1)
         res.status(204).send(note)
     }
+})
+
+app.get('/notes', function (req: Request, res: Response){
+  try {
+    res.status(200).send(notes)
+  } catch (error) {
+    res.status(400).send(error)
+  }
 })
 
 app.listen(3000)
