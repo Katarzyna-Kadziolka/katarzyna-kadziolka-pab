@@ -2,11 +2,14 @@ import express from 'express'
 import {Request, Response} from 'express'
 import  Note  from '../Models/Note'
 import Tag from '../Models/Tag'
+import Repository from '../Repository'
+
 
 const app = express()
 
 const notes: Note[] = []
 const tags: Tag[] = []
+const repo: Repository = new Repository
 
 app.use(express.json())
 
@@ -142,4 +145,4 @@ app.delete('/tag/:id', function (req: Request, res: Response){
   }
 })
 
-app.listen(3000)
+app.listen(5000)
