@@ -1,166 +1,214 @@
 import express from "express";
 import { Request, Response } from "express";
-import Data from "../Models/Data";
+import Storage from "../Models/Data";
 import Note from "../Models/Note";
 import Tag from "../Models/Tag";
 import Repository from "../Repository";
+import jwt from "jsonwebtoken";
+import User from "../Models/User";
 
 const app = express();
 
 const repo: Repository = new Repository();
+const registerUser = new User();
+const secret = "abc123"
 
-let datas: Data;
+let storage: Storage;
 repo.readStorage().then((a) => {
   if (a) {
-    datas = JSON.parse(a);
+    storage = JSON.parse(a);
   } else {
-    datas = new Data()
+    storage = new Storage()
   }
 });
+
 
 app.use(express.json());
 
 app.get("/note/:id", function (req: Request, res: Response) {
-  const note = datas.notes.find((a) => a.id === +req.params.id);
-  console.log(req);
-  if (note === undefined) {
-    res.status(404).send("Note does not exist");
+  if (registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const note = storage.notes.find((a) => a.id === +req.params.id);
+    console.log(req);
+    if (note === undefined) {
+      res.status(404).send("Note does not exist");
+    } else {
+      res.status(200).send(note);
+    }
   } else {
-    res.status(200).send(note);
+    res.status(401).send("Unauthorized user")
   }
 });
 
 app.post("/note", function (req: Request, res: Response) {
-  const note: Note = req.body;
-  if (note.title === undefined) {
-    res.status(400).send("Note title is undefined");
-  } else if (note.content === undefined) {
-    res.status(400).send("Note content is undefined");
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const note: Note = req.body;
+    if (note.title === undefined) {
+      res.status(400).send("Note title is undefined");
+    } else if (note.content === undefined) {
+      res.status(400).send("Note content is undefined");
+    } else {
+      console.log(note);
+      if (note.tags !== undefined) {
+        note.tags.forEach((tag) => {
+          if (!storage.tags.find((a) => a.name === tag.name)) {
+            const newTag: Tag = {
+              id: Date.now(),
+              name: tag.name,
+            };
+            storage.tags.push(newTag);
+          }
+        });
+      }
+      note.id = Date.now();
+      storage.notes.push(note);
+      res.status(201).send(note);
+      repo.updateStorage(JSON.stringify(storage));
+    } 
   } else {
-    console.log(note);
-    if (note.tags !== undefined) {
-      note.tags.forEach((tag) => {
-        if (!datas.tags.find((a) => a.name === tag.name)) {
-          const newTag: Tag = {
-            id: Date.now(),
-            name: tag.name,
-          };
-          datas.tags.push(newTag);
-        }
-      });
-    }
-    note.id = Date.now();
-    datas.notes.push(note);
-    res.status(201).send(note);
-    repo.updateStorage(JSON.stringify(datas));
+    res.status(401).send("Unauthorized user")
   }
 });
 
 app.put("/note/:id", function (req: Request, res: Response) {
-  const note: Note = req.body;
-  if (note.title === undefined) {
-    res.status(400).send("Note title is undefined");
-  } else if (note.content === undefined) {
-    res.status(400).send("Note content is undefined");
-  } else if (note.id === undefined) {
-    res.status(400).send("Note id is undefined");
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const note: Note = req.body;
+    if (note.title === undefined) {
+      res.status(400).send("Note title is undefined");
+    } else if (note.content === undefined) {
+      res.status(400).send("Note content is undefined");
+    } else if (note.id === undefined) {
+      res.status(400).send("Note id is undefined");
+    } else {
+      let oldNote = storage.notes.find((a) => a.id === note.id);
+      if (oldNote === undefined) {
+        res.status(404).send("Note does not exist");
+      } else oldNote = note;
+      res.status(201).send(note);
+      repo.updateStorage(JSON.stringify(storage));
+    }
   } else {
-    let oldNote = datas.notes.find((a) => a.id === note.id);
-    if (oldNote === undefined) {
-      res.status(404).send("Note does not exist");
-    } else oldNote = note;
-    res.status(201).send(note);
-    repo.updateStorage(JSON.stringify(datas));
+    res.status(401).send("Unauthorized user")
   }
 });
 
 app.delete("/note/:id", function (req: Request, res: Response) {
-  const note = datas.notes.find((a) => a.id === +req.params.id);
-  if (note === undefined) {
-    res.status(400).send("Note does not exist");
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const note = storage.notes.find((a) => a.id === +req.params.id);
+    if (note === undefined) {
+      res.status(400).send("Note does not exist");
+    } else {
+      storage.notes.splice(req.body.id, 1);
+      res.status(204).send(note);
+      repo.updateStorage(JSON.stringify(storage));
+    }
   } else {
-    datas.notes.splice(req.body.id, 1);
-    res.status(204).send(note);
-    repo.updateStorage(JSON.stringify(datas));
+    res.status(401).send("Unauthorized user")
   }
+  
 });
 
 app.get("/notes", function (req: Request, res: Response) {
-  try {
-    res.status(200).send(datas.notes);
-  } catch (error) {
-    res.status(400).send(error);
+  if (registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    try {
+      res.status(200).send(storage.notes);
+    } catch (error) {
+      res.status(400).send(error);
+    }
+  } else {
+    res.status(401).send("Unauthorized user")
   }
+  
 });
 
 // tags
 app.get("/tags", function (req: Request, res: Response) {
-  try {
-    res.status(200).send(datas.tags);
-  } catch (error) {
-    res.status(400).send(error);
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    try {
+      res.status(200).send(storage.tags);
+    } catch (error) {
+      res.status(400).send(error);
+    }
+  } else {
+    res.status(401).send("Unauthorized user")
   }
 });
 
 app.get("/tag/:id", function (req: Request, res: Response) {
-  const tag = datas.tags.find((a) => a.id === +req.params.id);
-  if (tag === undefined) {
-    res.status(404).send("Tag does not exist");
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const tag = storage.tags.find((a) => a.id === +req.params.id);
+    if (tag === undefined) {
+      res.status(404).send("Tag does not exist");
+    } else {
+      res.status(200).send(tag);
+    }
   } else {
-    res.status(200).send(tag);
+    res.status(401).send("Unauthorized user")
   }
 });
 
 app.post("/tag", function (req: Request, res: Response) {
-  const tag: Tag = req.body;
-  if (tag.name === undefined) {
-    res.status(400).send("Tag name is undefined");
-  } else if (datas.tags.find((a) => a.name === req.body.name)) {
-    res.status(400).send("This tag name has already exist");
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const tag: Tag = req.body;
+    if (tag.name === undefined) {
+      res.status(400).send("Tag name is undefined");
+    } else if (storage.tags.find((a) => a.name === req.body.name)) {
+      res.status(400).send("This tag name has already exist");
+    } else {
+      tag.id = Date.now();
+      storage.tags.push(tag);
+      res.status(201).send(tag);
+      repo.updateStorage(JSON.stringify(storage));
+    }
   } else {
-    tag.id = Date.now();
-    datas.tags.push(tag);
-    res.status(201).send(tag);
-    repo.updateStorage(JSON.stringify(datas));
+    res.status(401).send("Unauthorized user")
   }
 });
 
 app.put("/tag/:id", function (req: Request, res: Response) {
-  const tag: Tag = req.body;
-  if (tag.name === undefined) {
-    res.status(400).send("Tag name is undefined");
-  } else if (datas.tags.find((a) => a.name === req.body.name)) {
-    res.status(400).send("This tag name has already exist");
-  } else if (tag.id === undefined) {
-    res.status(400).send("Tag id is undefined");
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const tag: Tag = req.body;
+    if (tag.name === undefined) {
+      res.status(400).send("Tag name is undefined");
+    } else if (storage.tags.find((a) => a.name === req.body.name)) {
+      res.status(400).send("This tag name has already exist");
+    } else if (tag.id === undefined) {
+      res.status(400).send("Tag id is undefined");
+    } else {
+      let oldTag = storage.tags.find((a) => a.id === tag.id);
+      if (oldTag === undefined) {
+        res.status(404).send("Tag does not exist");
+      } else oldTag = tag;
+      res.status(201).send(tag);
+      repo.updateStorage(JSON.stringify(storage));
+    }
   } else {
-    let oldTag = datas.tags.find((a) => a.id === tag.id);
-    if (oldTag === undefined) {
-      res.status(404).send("Tag does not exist");
-    } else oldTag = tag;
-    res.status(201).send(tag);
-    repo.updateStorage(JSON.stringify(datas));
+    res.status(401).send("Unauthorized user")
   }
 });
 
 app.delete("/tag/:id", function (req: Request, res: Response) {
-  const tag = datas.tags.find((a) => a.id === +req.params.id);
-  if (tag === undefined) {
-    res.status(400).send("Tag does not exist");
-  } else {
-    datas.tags.splice(req.body.id, 1);
-    res.status(204).send(tag);
-    repo.updateStorage(JSON.stringify(datas));
+  if(registerUser.IfUserIsAuthorized(req.headers.authorization, secret)) {
+    const tag = storage.tags.find((a) => a.id === +req.params.id);
+    if (tag === undefined) {
+      res.status(400).send("Tag does not exist");
+    } else {
+      storage.tags.splice(req.body.id, 1);
+      res.status(204).send(tag);
+      repo.updateStorage(JSON.stringify(storage));
+    }
   }
 });
 
 app.post("/login", function(req: Request, res: Response) {
-  
-
-  //weryfikacja tokenu
-  const authData = req.headers.authorization
-  const token = authData?.split(' ')[1] ?? ''
-  const payload = jwt.verify(token, secret)
+  const user: User = req.body
+  if(!user.login || !user.password) {
+    res.status(401).send("Login or password is undefined")
+  }
+  const payload = user.login
+  registerUser.login = user.login
+  registerUser.password = user.password
+  const token = jwt.sign(payload, secret)
+  res.status(200).send(token)
 })
 
 app.listen(5000);

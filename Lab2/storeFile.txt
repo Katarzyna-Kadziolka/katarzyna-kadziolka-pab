@@ -1,1 +1,1 @@
-{"notes":[],"tags":[{"id":1648645379745,"name":"test"}]}
+{"notes":[{"title":"test","content":"My first test","createDate":"22-03-2022","tags":[{"name":"test"}],"id":1648655708288},{"title":"test","content":"My first test","createDate":"22-03-2022","tags":[{"name":"test"}],"id":1648656036845}],"tags":[{"id":1648645379745,"name":"test"}]}

@@ -1,10 +1,10 @@
 import Note from "./Note";
 import Tag from "./Tag";
 
-class Data {
+class Storage {
     notes: Note[] = []
     tags: Tag[] = []
-    constructor(data?: Data) {
+    constructor(data?: Storage) {
         if (data) {
             this.notes = data.notes,
             this.tags = data.tags
@@ -13,4 +13,4 @@ class Data {
     }
 }
 
-export default Data
+export default Storage
