@@ -6,14 +6,14 @@ class Repository {
         try {
             return await fs.promises.readFile('storeFile.txt', 'utf-8');
         } catch (err) {
-            console.log(err)
+            return ""
         }
     }
     public async updateStorage(dataToSave: string): Promise<void> {
         try {
             await fs.promises.writeFile('storeFile.txt', dataToSave);
         } catch (err) {
-            console.log(err)
+            return
         }
     }
 }
