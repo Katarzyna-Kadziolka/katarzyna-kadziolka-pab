@@ -10,7 +10,7 @@ import User from "../Models/User";
 const app = express();
 
 const repo: Repository = new Repository();
-const registerUser = new User();
+let registerUser = new User();
 const secret = "abc123"
 
 let storage: Storage;
@@ -29,7 +29,6 @@ app.get("/note/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
   if (registerUser.IfUserIsAuthorized(authData, secret)) {
     const note = storage.notes.find((a) => a.id === +req.params.id && registerUser.notesIds.includes(+req.params.id));
-    console.log(req);
     if (note === undefined) {
       res.status(404).send("Note does not exist");
     } else {
@@ -58,13 +57,13 @@ app.post("/note", function (req: Request, res: Response) {
               name: tag.name,
             };
             storage.tags.push(newTag);
-            storage.users.find(a => a.id === registerUser.id)?.tagsIds.push(newTag.id ?? 0)
+            registerUser.tagsIds.push(newTag.id ?? 0)
           }
         });
       }
       note.id = Date.now();
       storage.notes.push(note);
-      storage.users.find(a => a.id === registerUser.id)?.notesIds.push(note.id)
+      registerUser.notesIds.push(note.id);
       res.status(201).send(note);
       repo.updateStorage(JSON.stringify(storage));
     } 
@@ -104,7 +103,7 @@ app.delete("/note/:id", function (req: Request, res: Response) {
       res.status(400).send("Note does not exist");
     } else {
       storage.notes.splice(req.body.id, 1);
-      storage.users.find(a => a.id === registerUser.id)?.notesIds.splice(req.body.id, 1)
+      registerUser.notesIds.splice(req.body.id, 1)
       res.status(204).send(note);
       repo.updateStorage(JSON.stringify(storage));
     }
@@ -167,7 +166,7 @@ app.post("/tag", function (req: Request, res: Response) {
     } else {
       tag.id = Date.now();
       storage.tags.push(tag);
-      storage.users.find(a => a.id === registerUser.id)?.tagsIds.push(tag.id)
+      registerUser.tagsIds.push(tag.id ?? 0)
       res.status(201).send(tag);
       repo.updateStorage(JSON.stringify(storage));
     }
@@ -207,7 +206,7 @@ app.delete("/tag/:id", function (req: Request, res: Response) {
       res.status(400).send("Tag does not exist");
     } else {
       storage.tags.splice(req.body.id, 1);
-      storage.users.find(a => a.id === registerUser.id)?.tagsIds.splice(req.body.id, 1)
+      registerUser.tagsIds.splice(req.body.id, 1)
       res.status(204).send(tag);
       repo.updateStorage(JSON.stringify(storage));
     }
@@ -222,10 +221,12 @@ app.post("/login", function(req: Request, res: Response) {
     res.status(401).send("Login or password is undefined")
   }
   user.id = Date.now();
-  const payload = user.id
+  const payload = user.id.toString()
+  registerUser = new User();
+  registerUser.id = user.id
   registerUser.login = user.login
   registerUser.password = user.password
-  const token = jwt.sign(payload.toString, secret)
+  const token = jwt.sign(payload, secret)
   res.status(200).send(token)
   storage.users.push(user)
   repo.updateStorage(JSON.stringify(storage));

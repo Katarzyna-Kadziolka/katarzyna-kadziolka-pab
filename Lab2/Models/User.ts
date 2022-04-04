@@ -24,7 +24,11 @@ class User {
     public IfUserIsAuthorized(authData: string, secret: string) : boolean {
         const token = authData?.split(' ')[1] ?? ''
         const payload = jwt.verify(token, secret)
-        if (this.id && payload === this.id.toString) {
+        let checkValue = ''
+        if (this.id) {
+            checkValue = this.id.toString() ?? ''
+        }
+        if (this.id && payload === checkValue) {
             return true
         } else {
             return false
