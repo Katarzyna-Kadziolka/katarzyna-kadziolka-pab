@@ -133,7 +133,7 @@ app.get("/tags", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
   if(registerUser.IfUserIsAuthorized(authData, secret)) {
     try {
-      res.status(200).send(storage.tags);
+      res.status(200).send(storage.tags.filter(a => registerUser.tagsIds.includes(a.id ?? 0)));
     } catch (error) {
       res.status(400).send(error);
     }
@@ -145,7 +145,7 @@ app.get("/tags", function (req: Request, res: Response) {
 app.get("/tag/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
   if(registerUser.IfUserIsAuthorized(authData, secret)) {
-    const tag = storage.tags.find((a) => a.id === +req.params.id);
+    const tag = storage.tags.find((a) => a.id === +req.params.id && registerUser.tagsIds.includes(+req.params.id));
     if (tag === undefined) {
       res.status(404).send("Tag does not exist");
     } else {
@@ -167,6 +167,7 @@ app.post("/tag", function (req: Request, res: Response) {
     } else {
       tag.id = Date.now();
       storage.tags.push(tag);
+      storage.users.find(a => a.id === registerUser.id)?.tagsIds.push(tag.id)
       res.status(201).send(tag);
       repo.updateStorage(JSON.stringify(storage));
     }
@@ -206,6 +207,7 @@ app.delete("/tag/:id", function (req: Request, res: Response) {
       res.status(400).send("Tag does not exist");
     } else {
       storage.tags.splice(req.body.id, 1);
+      storage.users.find(a => a.id === registerUser.id)?.tagsIds.splice(req.body.id, 1)
       res.status(204).send(tag);
       repo.updateStorage(JSON.stringify(storage));
     }
