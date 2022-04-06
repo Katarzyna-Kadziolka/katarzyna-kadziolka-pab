@@ -6,6 +6,7 @@ class Note {
     createDate?: string;
     tags?: Tag[];
     id?: number;
+    isPrivate: boolean = true;
 
     constructor(note: Note) {
         this.title = note.title;
@@ -13,6 +14,7 @@ class Note {
         this.createDate = note.createDate;
         this.tags = note.tags;
         this.id = note.id;
+        this.isPrivate = note.isPrivate;
     }
 }
 

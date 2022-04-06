@@ -25,6 +25,16 @@ repo.readStorage().then((a) => {
 
 app.use(express.json());
 
+app.get("/note/list", function (req: Request, res: Response) {
+  const authData = req.headers.authorization ?? ''
+  if (registerUser.IfUserIsAuthorized(authData, secret)) {
+    getNotes(res, false, registerUser)
+  } else {
+    res.status(401).send("Unauthorized user")
+  }
+  
+});
+
 app.get("/note/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
   if (registerUser.IfUserIsAuthorized(authData, secret)) {
@@ -39,6 +49,17 @@ app.get("/note/:id", function (req: Request, res: Response) {
   }
 });
 
+app.get("/note/list/user/:userName", function (req: Request, res: Response) {
+  const user = storage.users.find(a => a.login === req.params.userName)
+  console.log(storage.users)
+  if(user) {
+    getNotes(res, true, user);
+  } else {
+    res.status(404).send("User name not exist")
+  }
+  
+})
+
 app.post("/note", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
   if(registerUser.IfUserIsAuthorized(authData, secret)) {
@@ -48,7 +69,6 @@ app.post("/note", function (req: Request, res: Response) {
     } else if (note.content === undefined) {
       res.status(400).send("Note content is undefined");
     } else {
-      console.log(note);
       if (note.tags !== undefined) {
         note.tags.forEach((tag) => {
           if (!storage.tags.find((a) => a.name === tag.name)) {
@@ -98,7 +118,7 @@ app.put("/note/:id", function (req: Request, res: Response) {
 app.delete("/note/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
   if(registerUser.IfUserIsAuthorized(authData, secret)) {
-    const note = storage.notes.find((a) => a.id === +req.params.id);
+    const note = storage.notes.find(a => a.id === +req.params.id);
     if (note === undefined) {
       res.status(400).send("Note does not exist");
     } else {
@@ -113,22 +133,25 @@ app.delete("/note/:id", function (req: Request, res: Response) {
   
 });
 
-app.get("/notes", function (req: Request, res: Response) {
-  const authData = req.headers.authorization ?? ''
-  if (registerUser.IfUserIsAuthorized(authData, secret)) {
-    try {
-      res.status(200).send(storage.notes.filter(a => registerUser.notesIds.includes(a.id ?? 0)));
-    } catch (error) {
-      res.status(400).send(error);
+function getNotes(res: Response, onlyPublicNotes: boolean, user: User) {
+  try {
+    let notes: Note[] = [];
+    if(onlyPublicNotes) {
+      notes = storage.notes.filter(a => user.notesIds.includes(a.id ?? 0))
+      notes = notes.filter(a => a.isPrivate === false)
+    } else {
+      notes = storage.notes.filter(a => user.notesIds.includes(a.id ?? 0))
     }
-  } else {
-    res.status(401).send("Unauthorized user")
+    res.status(200).send(notes);
+  } catch (error) {
+    res.status(400).send(error);
   }
-  
-});
+}
+
+
 
 // tags
-app.get("/tags", function (req: Request, res: Response) {
+app.get("/tag/list", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
   if(registerUser.IfUserIsAuthorized(authData, secret)) {
     try {
@@ -220,17 +243,28 @@ app.post("/login", function(req: Request, res: Response) {
   if(!user.login || !user.password) {
     res.status(401).send("Login or password is undefined")
   }
-  user.id = Date.now();
-  const payload = user.id.toString()
   registerUser = new User();
-  registerUser.id = user.id
-  registerUser.login = user.login
-  registerUser.password = user.password
-  const token = jwt.sign(payload, secret)
-  res.status(200).send(token)
-  storage.users.push(user)
-  repo.updateStorage(JSON.stringify(storage));
-  
+  const existingUser = storage.users.find(a => a.login)
+  if(existingUser){
+    if(existingUser.password === user.password) {
+      registerUser = existingUser
+    } else {
+      res.status(400).send("Wrong password")
+    }
+  } else {
+    registerUser.id = Date.now();
+    registerUser.login = user.login
+    registerUser.password = user.password
+    registerUser.notesIds = []
+    registerUser.tagsIds = []
+    storage.users.push(registerUser)
+  }
+  if(registerUser.id) {
+    const payload = registerUser.id.toString()
+    const token = jwt.sign(payload, secret)
+    res.status(200).send(token)
+    repo.updateStorage(JSON.stringify(storage));
+  }  
 })
 
 app.listen(5000);
