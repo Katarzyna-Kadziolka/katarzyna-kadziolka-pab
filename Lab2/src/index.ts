@@ -27,7 +27,7 @@ app.use(express.json());
 
 app.get("/note/list", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if (registerUser.IfUserIsAuthorized(authData, secret)) {
+  if (IfUserIsAuthorized(authData, secret)) {
     getNotes(res, false, registerUser)
   } else {
     res.status(401).send("Unauthorized user")
@@ -37,7 +37,7 @@ app.get("/note/list", function (req: Request, res: Response) {
 
 app.get("/note/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if (registerUser.IfUserIsAuthorized(authData, secret)) {
+  if (IfUserIsAuthorized(authData, secret)) {
     const note = storage.notes.find((a) => a.id === +req.params.id && registerUser.notesIds.includes(+req.params.id));
     if (note === undefined) {
       res.status(404).send("Note does not exist");
@@ -51,7 +51,6 @@ app.get("/note/:id", function (req: Request, res: Response) {
 
 app.get("/note/list/user/:userName", function (req: Request, res: Response) {
   const user = storage.users.find(a => a.login === req.params.userName)
-  console.log(storage.users)
   if(user) {
     getNotes(res, true, user);
   } else {
@@ -62,7 +61,7 @@ app.get("/note/list/user/:userName", function (req: Request, res: Response) {
 
 app.post("/note", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     const note: Note = req.body;
     if (note.title === undefined) {
       res.status(400).send("Note title is undefined");
@@ -94,7 +93,7 @@ app.post("/note", function (req: Request, res: Response) {
 
 app.put("/note/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     const note: Note = req.body;
     if (note.title === undefined) {
       res.status(400).send("Note title is undefined");
@@ -117,7 +116,7 @@ app.put("/note/:id", function (req: Request, res: Response) {
 
 app.delete("/note/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     const note = storage.notes.find(a => a.id === +req.params.id);
     if (note === undefined) {
       res.status(400).send("Note does not exist");
@@ -138,7 +137,7 @@ function getNotes(res: Response, onlyPublicNotes: boolean, user: User) {
     let notes: Note[] = [];
     if(onlyPublicNotes) {
       notes = storage.notes.filter(a => user.notesIds.includes(a.id ?? 0))
-      notes = notes.filter(a => a.isPrivate === false)
+      notes = notes.filter(a => a.isPrivate.toString() === "false")
     } else {
       notes = storage.notes.filter(a => user.notesIds.includes(a.id ?? 0))
     }
@@ -153,7 +152,7 @@ function getNotes(res: Response, onlyPublicNotes: boolean, user: User) {
 // tags
 app.get("/tag/list", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     try {
       res.status(200).send(storage.tags.filter(a => registerUser.tagsIds.includes(a.id ?? 0)));
     } catch (error) {
@@ -166,7 +165,7 @@ app.get("/tag/list", function (req: Request, res: Response) {
 
 app.get("/tag/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     const tag = storage.tags.find((a) => a.id === +req.params.id && registerUser.tagsIds.includes(+req.params.id));
     if (tag === undefined) {
       res.status(404).send("Tag does not exist");
@@ -180,7 +179,7 @@ app.get("/tag/:id", function (req: Request, res: Response) {
 
 app.post("/tag", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     const tag: Tag = req.body;
     if (tag.name === undefined) {
       res.status(400).send("Tag name is undefined");
@@ -200,7 +199,7 @@ app.post("/tag", function (req: Request, res: Response) {
 
 app.put("/tag/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     const tag: Tag = req.body;
     if (tag.name === undefined) {
       res.status(400).send("Tag name is undefined");
@@ -223,7 +222,7 @@ app.put("/tag/:id", function (req: Request, res: Response) {
 
 app.delete("/tag/:id", function (req: Request, res: Response) {
   const authData = req.headers.authorization ?? ''
-  if(registerUser.IfUserIsAuthorized(authData, secret)) {
+  if(IfUserIsAuthorized(authData, secret)) {
     const tag = storage.tags.find((a) => a.id === +req.params.id);
     if (tag === undefined) {
       res.status(400).send("Tag does not exist");
@@ -266,5 +265,19 @@ app.post("/login", function(req: Request, res: Response) {
     repo.updateStorage(JSON.stringify(storage));
   }  
 })
+
+function IfUserIsAuthorized(authData: string, secret: string) : boolean {
+  const token = authData?.split(' ')[1] ?? ''
+  const payload = jwt.verify(token, secret)
+  let checkValue = ''
+  if (registerUser.id) {
+      checkValue = registerUser.id.toString() ?? ''
+  }
+  if (registerUser.id && payload === checkValue) {
+      return true
+  } else {
+      return false
+  }
+}
 
 app.listen(5000);
