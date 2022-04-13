@@ -3,22 +3,18 @@ import { Request, Response } from "express";
 import Storage from "../Models/Storage";
 import Note from "../Models/Note";
 import Tag from "../Models/Tag";
-import Repository from "../Repository";
 import jwt from "jsonwebtoken";
 import User from "../Models/User";
 
 const app = express();
 
-const repo: Repository = new Repository();
 let registerUser = new User();
 const secret = "abc123"
 
-let storage: Storage;
-repo.readStorage().then((a) => {
+let storage: Storage = new Storage()
+storage.readStorage().then((a) => {
   if (a) {
     storage = JSON.parse(a);
-  } else {
-    storage = new Storage()
   }
 });
 
@@ -84,7 +80,7 @@ app.post("/note", function (req: Request, res: Response) {
       storage.notes.push(note);
       registerUser.notesIds.push(note.id);
       res.status(201).send(note);
-      repo.updateStorage(JSON.stringify(storage));
+      storage.updateStorage(JSON.stringify(storage));
     } 
   } else {
     res.status(401).send("Unauthorized user")
@@ -107,7 +103,7 @@ app.put("/note/:id", function (req: Request, res: Response) {
         res.status(404).send("Note does not exist");
       } else oldNote = note;
       res.status(201).send(note);
-      repo.updateStorage(JSON.stringify(storage));
+      storage.updateStorage(JSON.stringify(storage));
     }
   } else {
     res.status(401).send("Unauthorized user")
@@ -124,7 +120,7 @@ app.delete("/note/:id", function (req: Request, res: Response) {
       storage.notes.splice(req.body.id, 1);
       registerUser.notesIds.splice(req.body.id, 1)
       res.status(204).send(note);
-      repo.updateStorage(JSON.stringify(storage));
+      storage.updateStorage(JSON.stringify(storage));
     }
   } else {
     res.status(401).send("Unauthorized user")
@@ -190,7 +186,7 @@ app.post("/tag", function (req: Request, res: Response) {
       storage.tags.push(tag);
       registerUser.tagsIds.push(tag.id ?? 0)
       res.status(201).send(tag);
-      repo.updateStorage(JSON.stringify(storage));
+      storage.updateStorage(JSON.stringify(storage));
     }
   } else {
     res.status(401).send("Unauthorized user")
@@ -213,7 +209,7 @@ app.put("/tag/:id", function (req: Request, res: Response) {
         res.status(404).send("Tag does not exist");
       } else oldTag = tag;
       res.status(201).send(tag);
-      repo.updateStorage(JSON.stringify(storage));
+      storage.updateStorage(JSON.stringify(storage));
     }
   } else {
     res.status(401).send("Unauthorized user")
@@ -230,7 +226,7 @@ app.delete("/tag/:id", function (req: Request, res: Response) {
       storage.tags.splice(req.body.id, 1);
       registerUser.tagsIds.splice(req.body.id, 1)
       res.status(204).send(tag);
-      repo.updateStorage(JSON.stringify(storage));
+      storage.updateStorage(JSON.stringify(storage));
     }
   }
 });
@@ -262,7 +258,7 @@ app.post("/login", function(req: Request, res: Response) {
     const payload = registerUser.id.toString()
     const token = jwt.sign(payload, secret)
     res.status(200).send(token)
-    repo.updateStorage(JSON.stringify(storage));
+    storage.updateStorage(JSON.stringify(storage));
   }  
 })
 
