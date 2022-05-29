@@ -233,6 +233,25 @@ app.delete("/tag/:id", function (req: Request, res: Response) {
 
 // login
 
+app.post("/register", function(req: Request, res: Response) {
+  const user: User = req.body
+  if(!user.login || !user.password) {
+    res.status(401).send("Login or password is undefined")
+  }
+  if(storage.users.find(a => a.login)) {
+    res.status(401).send("User with this login already exists")
+  }
+  registerUser = new User();
+  registerUser.role = 'user'
+  registerUser.id = Date.now();
+  registerUser.login = user.login
+  registerUser.password = user.password
+  registerUser.notesIds = []
+  registerUser.tagsIds = []
+  storage.users.push(registerUser)
+  GenerateToken(res);
+})
+
 app.post("/login", function(req: Request, res: Response) {
   const user: User = req.body
   if(!user.login || !user.password) {
@@ -246,21 +265,92 @@ app.post("/login", function(req: Request, res: Response) {
     } else {
       res.status(400).send("Wrong password")
     }
-  } else {
-    registerUser.id = Date.now();
-    registerUser.login = user.login
-    registerUser.password = user.password
-    registerUser.notesIds = []
-    registerUser.tagsIds = []
-    storage.users.push(registerUser)
   }
+  GenerateToken(res); 
+})
+
+app.get("/user/list", function (req: Request, res: Response) {
+  const authData = req.headers.authorization ?? ''
+  if(IfUserIsAuthorized(authData, secret) && registerUser.role === 'admin') {
+    try {
+      res.status(200).send(storage.users);
+    } catch (error) {
+      res.status(400).send(error);
+    }
+  } else {
+    res.status(401).send("Lack of access")
+  }
+});
+
+app.get("/user/:id", function (req: Request, res: Response) {
+  const authData = req.headers.authorization ?? ''
+  if(IfUserIsAuthorized(authData, secret)) {
+    if (registerUser.id === +req.params.id || registerUser.role === 'admin') {
+      const user = storage.users.find((a) => a.id === +req.params.id);
+      if (user === undefined) {
+        res.status(404).send("User does not exist");
+      } else {
+        res.status(200).send(user);
+      }
+    } else {
+      res.status(401).send("Lack of access")
+    }
+  } else {
+    res.status(401).send("Unauthorized user")
+  }
+});
+
+app.delete("/user/:id", function (req: Request, res: Response) {
+  const authData = req.headers.authorization ?? ''
+  if(IfUserIsAuthorized(authData, secret) && registerUser.role === 'admin') {
+    const user = storage.users.find((a) => a.id === +req.params.id);
+    if (user === undefined) {
+      res.status(400).send("User does not exist");
+    } else {
+      storage.users.splice(req.body.id, 1);
+      
+      res.status(204).send(user);
+      storage.updateStorage(JSON.stringify(storage));
+    }
+  }
+});
+
+app.put("/user/:id", function (req: Request, res: Response) {
+  const authData = req.headers.authorization ?? ''
+  if(IfUserIsAuthorized(authData, secret)) {
+    const user: User = req.body;
+    if (user.login === undefined) {
+      res.status(400).send("Login is undefined");
+    } else if (storage.users.find((a) => a.login === req.body.login)) {
+      res.status(400).send("This login has already exist");
+    } else if (user.password == undefined) {
+      res.status(400).send("Password is undefined");
+    } else if (user.id === undefined) {
+      res.status(400).send("User id is undefined");
+    } else if (registerUser.id === user.id || registerUser.role === 'admin') {
+      let oldUser = storage.users.find((a) => a.id === user.id);
+      if (oldUser === undefined) {
+        res.status(404).send("User does not exist");
+      } else oldUser = user;
+      res.status(201).send(user);
+      storage.updateStorage(JSON.stringify(storage));
+    }
+    else {
+      res.status(401).send("Lack of access")
+    }
+  } else {
+    res.status(401).send("Unauthorized user")
+  }
+});
+
+function GenerateToken(res: Response) {
   if(registerUser.id) {
     const payload = registerUser.id.toString()
     const token = jwt.sign(payload, secret)
     res.status(200).send(token)
     storage.updateStorage(JSON.stringify(storage));
   }  
-})
+}
 
 function IfUserIsAuthorized(authData: string, secret: string) : boolean {
   const token = authData?.split(' ')[1] ?? ''

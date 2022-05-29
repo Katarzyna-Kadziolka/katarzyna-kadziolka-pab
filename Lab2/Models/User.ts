@@ -1,9 +1,9 @@
-import jwt from "jsonwebtoken";
 
 class User {
     id?: number;
     login: string;
-    password: string
+    password: string;
+    role: string;
     notesIds: number[];
     tagsIds: number[];
 
@@ -13,11 +13,13 @@ class User {
             this.password = user.password
             this.notesIds = user.notesIds
             this.tagsIds = user.tagsIds
+            this.role = user.role
         } else {
             this.login = ''
             this.password = ''
             this.notesIds = []
             this.tagsIds = []
+            this.role = 'user'
         }
         
     }
